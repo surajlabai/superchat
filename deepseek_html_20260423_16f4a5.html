@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MINECRAFT BLOCK ART - स्मूद ज़ूम ब्लॉक रिवीलर</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a1f0a 0%, #051005 100%);
+            font-family: 'Courier New', 'Minecraft', monospace;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #4a4a4a;
+            border: 8px solid #2a2a2a;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #3a3a3a;
+            padding: 15px;
+            text-align: center;
+            border-bottom: 4px solid #ffd700;
+        }
+
+        .header h1 {
+            color: #ffd700;
+            text-shadow: 3px 3px 0 #000;
+            font-size: 24px;
+        }
+
+        .header p {
+            color: #ccc;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .upload-panel {
+            background: #2a2a2a;
+            margin: 20px;
+            padding: 30px;
+            text-align: center;
+            border: 3px dashed #ffd700;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-panel:hover {
+            background: #3a3a3a;
+            border-color: #ffaa00;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 15px 20px;
+            padding: 15px;
+            background: #3a3a3a;
+            border-radius: 12px;
+        }
+
+        .btn {
+            background: #4c6e2e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #2a3a1a;
+            transition: 0.05s linear;
+            font-family: monospace;
+        }
+
+        .btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #2a3a1a;
+        }
+
+        .slider-group {
+            background: #2a2a2a;
+            padding: 8px 15px;
+            border-radius: 8px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .slider-group label {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        input[type="range"] {
+            width: 150px;
+            cursor: pointer;
+        }
+
+        .zoom-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: #2a2a2a;
+            padding: 8px 15px;
+            border-radius: 8px;
+        }
+
+        .zoom-btn {
+            background: #5a5a5a;
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 2px 0 #2a2a2a;
+        }
+
+        .zoom-btn:active {
+            transform: translateY(2px);
+        }
+
+        .zoom-level {
+            color: #ffd700;
+            font-weight: bold;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .artwork-area {
+            background: #1a2a1a;
+            margin: 20px;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            min-height: 550px;
+            overflow: auto;
+            position: relative;
+            border: 3px solid #5a4a2a;
+        }
+
+        .zoom-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 500px;
+            transition: transform 0.15s ease-out;
+            transform-origin: center center;
+        }
+
+        .artwork-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        /* Normal image layer (smooth, no blocks visible at 100%) */
+        .smooth-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
+            opacity: 1;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        /* Block grid layer (visible only when zoomed) */
+        .block-grid {
+            display: inline-grid;
+            gap: 0px;
+            background: transparent;
+            position: relative;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .block {
+            cursor: pointer;
+            transition: all 0.05s ease;
+        }
+
+        .block:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 2px gold;
+            z-index: 10;
+        }
+
+        .palette-section {
+            background: #3a3a3a;
+            margin: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            border: 3px solid #2a2a2a;
+        }
+
+        .palette-title {
+            color: #ffd700;
+            text-align: center;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .palette {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .block-option {
+            width: 55px;
+            height: 55px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid #2a2a2a;
+            transition: all 0.1s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 0 #000;
+            text-align: center;
+        }
+
+        .block-option.active {
+            transform: scale(1.08);
+            border: 2px solid #ffd700;
+            box-shadow: 0 0 0 2px #000;
+        }
+
+        .info-bar {
+            background: #1a1a1a;
+            color: #7aff7a;
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            margin: 10px 20px 20px;
+            border-radius: 8px;
+        }
+
+        .zoom-hint {
+            background: #2a2a2a;
+            color: #ffaa66;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .block-option { width: 45px; height: 45px; font-size: 8px; }
+            .btn { padding: 6px 12px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>⛏️ MINECRAFT BLOCK ART - स्मूद ज़ूम ब्लॉक रिवीलर ⛏️</h1>
+        <p>🔍 100% ज़ूम पर नॉर्मल फोटो | 🔍 ज़ूम बढ़ाएं → ब्लॉक दिखने लगेंगे | 🔍 200% पर 20x20 ब्लॉक साफ़</p>
+    </div>
+
+    <div class="upload-panel" id="uploadZone">
+        <p>📸 यहाँ क्लिक करें और फोटो अपलोड करें</p>
+        <p style="font-size: 11px; margin-top: 8px;">JPG, PNG - हाई क्वालिटी फोटो बेस्ट रहेगी</p>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;">
+    </div>
+
+    <div class="controls">
+        <div class="slider-group">
+            <label>🎯 ब्लॉक डिटेल:</label>
+            <input type="range" id="detailSlider" min="20" max="100" value="60" step="5">
+            <span id="detailValue" style="color:#ffd700;">60x60</span>
+        </div>
+        <div class="zoom-controls">
+            <button class="zoom-btn" id="zoomOut">−</button>
+            <span class="zoom-level" id="zoomLevel">100%</span>
+            <button class="zoom-btn" id="zoomIn">+</button>
+            <button class="zoom-btn" id="zoomReset">↺</button>
+        </div>
+        <button class="btn" id="generateBtn">✨ ब्लॉक आर्ट बनाएं ✨</button>
+        <button class="btn" id="downloadBtn">💾 डाउनलोड करें</button>
+        <button class="btn" id="resetBtn">🔄 रीसेट</button>
+    </div>
+
+    <div class="artwork-area">
+        <div class="zoom-container" id="zoomContainer">
+            <div class="artwork-wrapper" id="artworkWrapper">
+                <img id="smoothImage" class="smooth-image" style="display: none;">
+                <div id="blockGridContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="palette-section">
+        <div class="palette-title">🎨 माइनक्राफ्ट ब्लॉक पैलेट (ब्लॉक एडिट करने के लिए)</div>
+        <div class="palette" id="palette"></div>
+        <div class="zoom-hint" style="display: block; text-align: center; margin-top: 10px;">
+            💡 हिंट: ज़ूम 100% पर सिर्फ फोटो दिखेगी | 120% से ब्लॉक दिखने शुरू | 200% पर 20x20 ब्लॉक साफ़
+        </div>
+    </div>
+
+    <div class="info-bar">
+        💡 <strong>कैसे यूज़ करें:</strong> फोटो अपलोड करें → ब्लॉक आर्ट बनाएं → 🔍 ज़ूम करें (100% पर फोटो नॉर्मल, ज़ूम बढ़ने पर ब्लॉक दिखेंगे) → किसी भी ब्लॉक पर क्लिक करें और बदलें → डाउनलोड करें
+    </div>
+</div>
+
+<script>
+    // Minecraft ब्लॉक्स - रियल कलर्स
+    const MINECRAFT_BLOCKS = [
+        { name: "🌿 ग्रास", color: "#5c9c3c", light: "#7cb55c", dark: "#3a6b2a" },
+        { name: "🪨 स्टोन", color: "#7e7e7e", light: "#a0a0a0", dark: "#5a5a5a" },
+        { name: "🟫 डर्ट", color: "#8b5a2b", light: "#a87b45", dark: "#5a3817" },
+        { name: "🪵 प्लैंक्स", color: "#bc9a5c", light: "#deb87a", dark: "#8a6e3e" },
+        { name: "💎 डायमंड", color: "#2dd4bf", light: "#5ef4df", dark: "#149b8a" },
+        { name: "🟡 गोल्ड", color: "#facc15", light: "#fde047", dark: "#ca8a04" },
+        { name: "⚙️ आयरन", color: "#cbd5e1", light: "#e2e8f0", dark: "#94a3b8" },
+        { name: "🔥 नेदराइट", color: "#3b2f2f", light: "#5c4848", dark: "#231c1c" },
+        { name: "🔵 लैपिस", color: "#2c6e9e", light: "#4b8fc9", dark: "#1c4468" },
+        { name: "🔴 रेडस्टोन", color: "#aa2e2e", light: "#cc4949", dark: "#771c1c" },
+        { name: "🟢 एमराल्ड", color: "#32a852", light: "#54cc74", dark: "#217a3a" },
+        { name: "🧱 ब्रिक", color: "#b85c3a", light: "#d47c56", dark: "#8a3a1e" },
+        { name: "❄️ स्नो", color: "#e0e8f0", light: "#f0f4f8", dark: "#b0b8c0" },
+        { name: "🟣 पर्पल", color: "#7c3a9e", light: "#9b5fc9", dark: "#4a1c6e" },
+        { name: "🟧 ऑरेंज", color: "#e67e22", light: "#f39c12", dark: "#d35400" },
+        { name: "⚫ ब्लैक", color: "#2a2a2a", light: "#4a4a4a", dark: "#1a1a1a" }
+    ];
+
+    let blockData = [];
+    let originalImage = null;
+    let originalImageUrl = null;
+    let currentDetail = 60;
+    let currentZoom = 1;
+    let selectedBlockColor = MINECRAFT_BLOCKS[0].color;
+    let baseBlockSize = 4;  // बेस ब्लॉक साइज़ - ज़ूम पर बढ़ेगा
+
+    // DOM elements
+    const blockGridContainer = document.getElementById('blockGridContainer');
+    const smoothImage = document.getElementById('smoothImage');
+    const artworkWrapper = document.getElementById('artworkWrapper');
+    const fileInput = document.getElementById('fileInput');
+    const uploadZone = document.getElementById('uploadZone');
+    const generateBtn = document.getElementById('generateBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const detailSlider = document.getElementById('detailSlider');
+    const detailValue = document.getElementById('detailValue');
+    const zoomInBtn = document.getElementById('zoomIn');
+    const zoomOutBtn = document.getElementById('zoomOut');
+    const zoomResetBtn = document.getElementById('zoomReset');
+    const zoomLevelSpan = document.getElementById('zoomLevel');
+    const zoomContainer = document.getElementById('zoomContainer');
+    const paletteDiv = document.getElementById('palette');
+
+    // Get block gradient
+    function getBlockGradient(color) {
+        const block = MINECRAFT_BLOCKS.find(b => b.color === color);
+        if(block) {
+            return `linear-gradient(135deg, ${block.light}, ${block.dark})`;
+        }
+        return `linear-gradient(135deg, ${color}, ${adjustBrightness(color, -25)})`;
+    }
+
+    function adjustBrightness(hex, percent) {
+        if(!hex || hex === '#') return '#666';
+        let r, g, b;
+        if(hex.startsWith('#')) {
+            r = parseInt(hex.slice(1,3), 16);
+            g = parseInt(hex.slice(3,5), 16);
+            b = parseInt(hex.slice(5,7), 16);
+        } else return hex;
+        r = Math.min(255, Math.max(0, r + (r * percent) / 100));
+        g = Math.min(255, Math.max(0, g + (g * percent) / 100));
+        b = Math.min(255, Math.max(0, b + (b * percent) / 100));
+        return `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
+    }
+
+    function hexToRgb(hex) {
+        let h = hex.replace('#', '');
+        if(h.length === 3) h = h.split('').map(c => c + c).join('');
+        return {
+            r: parseInt(h.slice(0,2), 16),
+            g: parseInt(h.slice(2,4), 16),
+            b: parseInt(h.slice(4,6), 16)
+        };
+    }
+
+    // Find nearest block color
+    function findNearestBlock(r, g, b) {
+        let minDist = Infinity;
+        let nearest = MINECRAFT_BLOCKS[0].color;
+        for(let block of MINECRAFT_BLOCKS) {
+            const blockRgb = hexToRgb(block.color);
+            const dist = Math.sqrt(
+                Math.pow(r - blockRgb.r, 2) +
+                Math.pow(g - blockRgb.g, 2) +
+                Math.pow(b - blockRgb.b, 2)
+            );
+            if(dist < minDist) {
+                minDist = dist;
+                nearest = block.color;
+            }
+        }
+        return nearest;
+    }
+
+    // Convert image to block grid
+    function imageToBlockGrid(imageElement, gridSize) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = gridSize;
+        canvas.height = gridSize;
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(imageElement, 0, 0, gridSize, gridSize);
+        
+        const imgData = ctx.getImageData(0, 0, gridSize, gridSize);
+        const data = imgData.data;
+        const grid = [];
+        
+        for(let y = 0; y < gridSize; y++) {
+            grid[y] = [];
+            for(let x = 0; x < gridSize; x++) {
+                const idx = (y * gridSize + x) * 4;
+                grid[y][x] = findNearestBlock(data[idx], data[idx+1], data[idx+2]);
+            }
+        }
+        return grid;
+    }
+
+    // Render blocks based on zoom level - ज़ूम के हिसाब से ब्लॉक दिखेंगे
+    function renderBlocks() {
+        if(!blockData.length || !blockData[0]) {
+            blockGridContainer.innerHTML = '';
+            smoothImage.style.display = 'none';
+            return;
+        }
+
+        const gridSize = blockData.length;
+        
+        // ज़ूम के हिसाब से ब्लॉक साइज़ कैलकुलेट करें
+        // 100% ज़ूम पर ब्लॉक साइज़ 0 (दिखे ही नहीं)
+        // 200% ज़ूम पर ब्लॉक साइज़ = 20px (20x20 ब्लॉक)
+        let displayBlockSize = 0;
+        let blockOpacity = 0;
+        
+        if(currentZoom <= 1.0) {
+            // 100% या उससे कम - ब्लॉक बिल्कुल न दिखें
+            displayBlockSize = 0;
+            blockOpacity = 0;
+        } else if(currentZoom >= 2.0) {
+            // 200% या ज़्यादा - 20px ब्लॉक (20x20)
+            displayBlockSize = 20;
+            blockOpacity = 1;
+        } else {
+            // 100% से 200% के बीच - लीनियर इंटरपोलेशन
+            // 1.0 = 0px, 2.0 = 20px
+            const t = (currentZoom - 1.0) / 1.0; // 0 to 1
+            displayBlockSize = 4 + (t * 16); // 4px to 20px
+            blockOpacity = t; // 0 to 1
+        }
+        
+        if(displayBlockSize <= 1 || blockOpacity < 0.05) {
+            // ब्लॉक दिखाने की ज़रूरत नहीं
+            blockGridContainer.innerHTML = '';
+            smoothImage.style.opacity = '1';
+            return;
+        }
+        
+        // ब्लॉक ग्रिड बनाएं
+        const container = document.createElement('div');
+        container.className = 'block-grid';
+        container.style.gridTemplateColumns = `repeat(${gridSize}, ${displayBlockSize}px)`;
+        container.style.gap = `${Math.max(0.5, displayBlockSize / 15)}px`;
+        container.style.opacity = blockOpacity;
+        
+        for(let row = 0; row < gridSize; row++) {
+            for(let col = 0; col < gridSize; col++) {
+                const blockColor = blockData[row][col];
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'block';
+                blockDiv.style.width = `${displayBlockSize}px`;
+                blockDiv.style.height = `${displayBlockSize}px`;
+                blockDiv.style.background = getBlockGradient(blockColor);
+                blockDiv.style.boxShadow = 'inset -1px -1px 0 rgba(0,0,0,0.4), inset 1px 1px 0 rgba(255,255,255,0.2)';
+                blockDiv.style.borderRadius = `${Math.max(1, displayBlockSize / 10)}px`;
+                
+                blockDiv.addEventListener('click', ((r, c) => {
+                    return () => {
+                        blockData[r][c] = selectedBlockColor;
+                        renderBlocks();
+                        updateSmoothImage();
+                    };
+                })(row, col));
+                
+                container.appendChild(blockDiv);
+            }
+        }
+        
+        blockGridContainer.innerHTML = '';
+        blockGridContainer.appendChild(container);
+        
+        // स्मूद इमेज की opacity कम करें ताकि ब्लॉक दिखें
+        smoothImage.style.opacity = `${1 - blockOpacity * 0.7}`;
+    }
+    
+    // Smooth image update
+    function updateSmoothImage() {
+        if(!originalImage) return;
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 400;
+        canvas.height = 400;
+        ctx.drawImage(originalImage, 0, 0, 400, 400);
+        smoothImage.src = canvas.toDataURL();
+        smoothImage.style.display = 'block';
+        smoothImage.style.width = 'auto';
+        smoothImage.style.height = 'auto';
+        smoothImage.style.maxWidth = '100%';
+        smoothImage.style.maxHeight = '500px';
+        smoothImage.style.position = 'relative';
+        smoothImage.style.borderRadius = '8px';
+    }
+
+    // Process image
+    function processImage(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                originalImage = img;
+                currentDetail = parseInt(detailSlider.value);
+                
+                // Create smooth image
+                updateSmoothImage();
+                
+                // Create block data
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = currentDetail;
+                canvas.height = currentDetail;
+                ctx.drawImage(img, 0, 0, currentDetail, currentDetail);
+                
+                const tempImg = new Image();
+                tempImg.onload = () => {
+                    blockData = imageToBlockGrid(tempImg, currentDetail);
+                    renderBlocks();
+                };
+                tempImg.src = canvas.toDataURL();
+            };
+            img.src = e.target.result;
+        };
+        if(file) reader.readAsDataURL(file);
+    }
+
+    // Generate button
+    generateBtn.addEventListener('click', () => {
+        if(!originalImage) {
+            alert('❌ पहले फोटो अपलोड करें!');
+            return;
+        }
+        currentDetail = parseInt(detailSlider.value);
+        detailValue.innerText = currentDetail + 'x' + currentDetail;
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = currentDetail;
+        canvas.height = currentDetail;
+        ctx.drawImage(originalImage, 0, 0, currentDetail, currentDetail);
+        
+        const tempImg = new Image();
+        tempImg.onload = () => {
+            blockData = imageToBlockGrid(tempImg, currentDetail);
+            renderBlocks();
+        };
+        tempImg.src = canvas.toDataURL();
+    });
+
+    // Reset button
+    resetBtn.addEventListener('click', () => {
+        if(!originalImage) {
+            alert('❌ कोई फोटो नहीं है!');
+            return;
+        }
+        currentDetail = parseInt(detailSlider.value);
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = currentDetail;
+        canvas.height = currentDetail;
+        ctx.drawImage(originalImage, 0, 0, currentDetail, currentDetail);
+        
+        const tempImg = new Image();
+        tempImg.onload = () => {
+            blockData = imageToBlockGrid(tempImg, currentDetail);
+            renderBlocks();
+        };
+        tempImg.src = canvas.toDataURL();
+    });
+
+    // Download
+    downloadBtn.addEventListener('click', () => {
+        if(!blockData.length) {
+            alert('❌ पहले ब्लॉक आर्ट बनाएं!');
+            return;
+        }
+        
+        const gridSize = blockData.length;
+        let downloadBlockSize = 8;
+        
+        if(currentZoom <= 1.0) {
+            downloadBlockSize = 4;
+        } else if(currentZoom >= 2.0) {
+            downloadBlockSize = 20;
+        } else {
+            const t = (currentZoom - 1.0) / 1.0;
+            downloadBlockSize = 4 + (t * 16);
+        }
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = gridSize * downloadBlockSize;
+        canvas.height = gridSize * downloadBlockSize;
+        
+        for(let row = 0; row < gridSize; row++) {
+            for(let col = 0; col < gridSize; col++) {
+                const blockColor = blockData[row][col];
+                const block = MINECRAFT_BLOCKS.find(b => b.color === blockColor);
+                if(block) {
+                    const grad = ctx.createLinearGradient(
+                        col * downloadBlockSize, row * downloadBlockSize,
+                        col * downloadBlockSize + downloadBlockSize, row * downloadBlockSize + downloadBlockSize
+                    );
+                    grad.addColorStop(0, block.light);
+                    grad.addColorStop(1, block.dark);
+                    ctx.fillStyle = grad;
+                } else {
+                    ctx.fillStyle = blockColor;
+                }
+                ctx.fillRect(col * downloadBlockSize, row * downloadBlockSize, downloadBlockSize, downloadBlockSize);
+            }
+        }
+        
+        const link = document.createElement('a');
+        link.download = `minecraft_block_art_zoom_${Math.round(currentZoom * 100)}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+    });
+
+    // Zoom functions
+    function updateZoom() {
+        zoomContainer.style.transform = `scale(${currentZoom})`;
+        zoomLevelSpan.innerText = `${Math.round(currentZoom * 100)}%`;
+        renderBlocks();
+    }
+    
+    zoomInBtn.addEventListener('click', () => {
+        if(currentZoom < 3) {
+            currentZoom = Math.min(3, currentZoom + 0.1);
+            updateZoom();
+        }
+    });
+    
+    zoomOutBtn.addEventListener('click', () => {
+        if(currentZoom > 0.5) {
+            currentZoom = Math.max(0.5, currentZoom - 0.1);
+            updateZoom();
+        }
+    });
+    
+    zoomResetBtn.addEventListener('click', () => {
+        currentZoom = 1;
+        updateZoom();
+    });
+
+    // Detail slider
+    detailSlider.addEventListener('input', (e) => {
+        const val = parseInt(e.target.value);
+        detailValue.innerText = val + 'x' + val;
+    });
+
+    // Build palette
+    function buildPalette() {
+        paletteDiv.innerHTML = '';
+        MINECRAFT_BLOCKS.forEach((block) => {
+            const option = document.createElement('div');
+            option.className = 'block-option';
+            option.style.background = getBlockGradient(block.color);
+            option.innerHTML = block.name;
+            if(block.color === selectedBlockColor) option.classList.add('active');
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.block-option').forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                selectedBlockColor = block.color;
+            });
+            paletteDiv.appendChild(option);
+        });
+    }
+
+    // Upload handlers
+    uploadZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+        if(e.target.files && e.target.files[0]) processImage(e.target.files[0]);
+    });
+    uploadZone.addEventListener('dragover', (e) => e.preventDefault());
+    uploadZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if(e.dataTransfer.files.length) processImage(e.dataTransfer.files[0]);
+    });
+
+    // Initialize
+    buildPalette();
+    updateZoom();
+</script>
+</body>
+</html>
