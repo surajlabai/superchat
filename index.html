@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> super Chat Web</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <style>
+        /* वेबसाइट का डिज़ाइन (Sky Blue Theme) */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #87CEFA; /* Sky Blue Light */
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        #main-screen, #chat-screen {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        #chat-screen { 
+            display: none; 
+            height: 80vh; 
+            flex-direction: column;
+        }
+        input, button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            box-sizing: border-box;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover { background-color: #45a049; }
+        #btnSend { background-color: #2196F3; }
+        #btnSend:hover { background-color: #1e88e5; }
+        #btnLeave { background-color: #f44336; padding: 10px; margin-bottom: 10px; }
+        
+        #messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            text-align: left;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .msg-you { color: blue; font-size: 18px; margin: 5px 0; font-weight: bold;}
+        .msg-partner { color: red; font-size: 18px; margin: 5px 0; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+    <div id="main-screen">
+        <h2 id="myPinDisplay" style="color: #333;">Your PIN: Generating...</h2>
+        <input type="number" id="partnerPin" placeholder="Enter Partner 6-Digit PIN" maxlength="6">
+        <button id="btnConnect" onclick="sendRequest()">CONNECT</button>
+    </div>
+
+    <div id="chat-screen">
+        <button id="btnLeave" onclick="leaveChat()">Leave Chat (Disconnect)</button>
+        <div id="messages"></div>
+        <div style="display:flex; gap: 10px;">
+            <input type="text" id="msgInput" placeholder="Type a message...">
+            <button id="btnSend" style="width: 30%;" onclick="sendMessage()">SEND</button>
+        </div>
+    </div>
+
+    <script>
+        // 1. Firebase Configuration (Aapka Naya URL)
+        const firebaseConfig = {
+            databaseURL: "https://datastoreall-default-rtdb.asia-southeast1.firebasedatabase.app/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Variables
+        let myPin = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit PIN
+        let partnerPin = "";
+        let chatId = "";
+        let isChatting = false;
+
+        document.getElementById('myPinDisplay').innerText = "Your PIN: " + myPin;
+
+        // Startup Data Clean
+        db.ref('Users/' + myPin + '/status').set('available');
+        db.ref('Users/' + myPin + '/chatPartner').remove();
+        db.ref('Users/' + myPin + '/requestFrom').remove();
+
+        // 2. Incoming Request Listener (Dialog Box dikhana)
+        db.ref('Users/' + myPin + '/requestFrom').on('value', (snapshot) => {
+            const requester = snapshot.val();
+            if (requester && !isChatting) {
+                if(confirm("PIN " + requester + " wants to connect. Accept?")) {
+                    db.ref('Users/' + myPin + '/chatPartner').set(requester);
+                    db.ref('Users/' + requester + '/chatPartner').set(myPin);
+                    db.ref('Users/' + myPin + '/requestFrom').remove();
+                } else {
+                    db.ref('Users/' + myPin + '/requestFrom').remove();
+                }
+            }
+        });
+
+        // 3. Chat Partner Set hone par Chat Kholna
+        db.ref('Users/' + myPin + '/chatPartner').on('value', (snapshot) => {
+            const pPin = snapshot.val();
+            if (pPin) {
+                isChatting = true;
+                partnerPin = pPin;
+                chatId = (myPin > partnerPin) ? myPin + partnerPin : partnerPin + myPin;
+                
+                document.getElementById('main-screen').style.display = 'none';
+                document.getElementById('chat-screen').style.display = 'flex';
+                
+                loadMessages();
+            } else if (isChatting) {
+                // Agar partner disconnect ho jaye
+                alert("Partner left the chat.");
+                resetToMain();
+            }
+        });
+
+        // 4. Request Bhejna
+        function sendRequest() {
+            const pPin = document.getElementById('partnerPin').value.trim();
+            if (pPin.length === 6) {
+                if (pPin === myPin) {
+                    alert("Cannot connect to yourself!");
+                    return;
+                }
+                alert("Request sent to " + pPin + ". Waiting for accept...");
+                db.ref('Users/' + pPin + '/requestFrom').set(myPin);
+            } else {
+                alert("Please enter a valid 6-Digit PIN");
+            }
+        }
+
+        // 5. Messages Load Karna
+        let chatListener = null;
+        function loadMessages() {
+            const msgBox = document.getElementById('messages');
+            const chatRef = db.ref('PrivateChats/' + chatId);
+            
+            chatListener = chatRef.on('value', (snapshot) => {
+                msgBox.innerHTML = ''; // Box clean karo
+                snapshot.forEach((child) => {
+                    const msg = child.val();
+                    const div = document.createElement('div');
+                    if (msg.senderId === myPin) {
+                        div.className = 'msg-you';
+                        div.innerText = "You: " + msg.message;
+                    } else {
+                        div.className = 'msg-partner';
+                        div.innerText = "Partner: " + msg.message;
+                    }
+                    msgBox.appendChild(div);
+                });
+                msgBox.scrollTop = msgBox.scrollHeight; // Auto-scroll neeche
+            });
+        }
+
+        // 6. Message Send Karna (60 Seconds Expiry ke sath)
+        function sendMessage() {
+            const msgInput = document.getElementById('msgInput');
+            const txt = msgInput.value.trim();
+            if (txt !== "") {
+                const newMsgRef = db.ref('PrivateChats/' + chatId).push();
+                newMsgRef.set({
+                    senderId: myPin,
+                    message: txt,
+                    timestamp: Date.now()
+                });
+                msgInput.value = "";
+                
+                // Auto Delete after 60 seconds
+                setTimeout(() => {
+                    newMsgRef.remove();
+                }, 60000);
+            }
+        }
+
+        // 7. Disconnect Logic
+        function leaveChat() {
+            db.ref('Users/' + myPin + '/chatPartner').remove();
+            db.ref('Users/' + partnerPin + '/chatPartner').remove();
+            resetToMain();
+        }
+
+        function resetToMain() {
+            isChatting = false;
+            partnerPin = "";
+            if (chatId !== "") {
+                db.ref('PrivateChats/' + chatId).off('value', chatListener); // Purane listener band karo
+            }
+            chatId = "";
+            document.getElementById('main-screen').style.display = 'block';
+            document.getElementById('chat-screen').style.display = 'none';
+            document.getElementById('messages').innerHTML = '';
+        }
+
+        // 8. Tab close karne par offline ho jana
+        window.addEventListener('beforeunload', () => {
+            if(isChatting) {
+                db.ref('Users/' + myPin + '/chatPartner').remove();
+                db.ref('Users/' + partnerPin + '/chatPartner').remove();
+            }
+        });
+    </script>
+</body>
+</html>
